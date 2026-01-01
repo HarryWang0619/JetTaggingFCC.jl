@@ -438,21 +438,25 @@ function get_dz(
 
                         sin_phi, cos_phi = sincos(phi0)
 
-                        x1 = -D0 * sin_phi - Vx
-                        x2 = D0 * cos_phi - Vy
+                        x1 = muladd(-D0, sin_phi, -Vx)
+                        x2 = muladd(D0, cos_phi, -Vy)
                         x3 = Z0 - Vz
 
                         px = mom_x[i]
                         py = mom_y[i]
                         pz = mom_z[i]
 
-                        # Compute intermediate values
                         a = -charges[i] * cSpeed_Bz
-                        pt = sqrt(px^2 + py^2)
+
+                        pt = hypot(px, py)
+
+                        u = muladd(a, x2, px)
+                        v = muladd(-a, x1, py)
+                        t = hypot(u, v)
+
                         c = a / (2 * pt)
                         r2 = x1^2 + x2^2
                         cross = x1 * py - x2 * px
-                        t = sqrt(pt^2 - 2 * a * cross + a^2 * r2)
 
                         d = if pt < 10.0f0
                             (t - pt) / a
@@ -460,23 +464,15 @@ function get_dz(
                             (-2 * cross + a * r2) / (t + pt)
                         end
 
-                        b_arg = max(r2 - d^2, 0.0f0) / (1 + 2 * c * d)
-                        b = c * sqrt(b_arg)
-                        if abs(b) > 1.0f0
-                            b = sign(b)
-                        end
+                        denom = 1 + 2 * c * d
+                        b_arg = max(r2 - d^2, 0.0f0) / (abs(denom) + 1.0f-10)
+                        b = clamp(copysign(c * sqrt(b_arg), denom), -1.0f0, 1.0f0)
 
-                        # Calculate st and ct
                         st = asin(b) / c
                         ct = pz / pt
 
-                        # Calculate z0
                         dot = x1 * px + x2 * py
-                        if dot > 0.0f0
-                            x3 - ct * st
-                        else
-                            x3 + ct * st
-                        end
+                        x3 + copysign(ct * st, -dot)
                     else
                         UNDEF_VAL
                     end
@@ -533,27 +529,15 @@ function get_phi0(
 
                         sin_phi, cos_phi = sincos(phi0_track)
 
-                        x1 = -D0 * sin_phi - Vx
-                        x2 = D0 * cos_phi - Vy
+                        x1 = muladd(-D0, sin_phi, -Vx)
+                        x2 = muladd(D0, cos_phi, -Vy)
 
                         px = mom_x[i]
                         py = mom_y[i]
 
                         a = -charges[i] * cSpeed_Bz
 
-                        # Minimize redundant calculations
-                        pt2 = px^2 + py^2
-                        r2 = x1^2 + x2^2
-                        cross = x1 * py - x2 * px
-                        two_a_cross = 2 * a * cross
-                        a2_r2 = a^2 * r2
-
-                        t = sqrt(pt2 - two_a_cross + a2_r2)
-                        inv_t = 1.0f0 / t
-
-                        a_x1 = a * x1
-                        a_x2 = a * x2
-                        atan((py - a_x1) * inv_t, (px + a_x2) * inv_t)
+                        atan(muladd(-a, x1, py), muladd(a, x2, px))
                     else
                         UNDEF_VAL
                     end
