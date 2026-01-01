@@ -429,54 +429,56 @@ function get_dz(
             track_indices = jet_constituents.tracks
 
             Float32[
-                @inbounds(let track_idx = track_indices[i].first
-                    if track_idx < n_tracks
-                        idx = track_idx + 1
-                        D0 = D0_values[idx]
-                        Z0 = Z0_values[idx]
-                        phi0 = phi_values[idx]
+                @inbounds(
+                    let track_idx = track_indices[i].first
+                        if track_idx < n_tracks
+                            idx = track_idx + 1
+                            D0 = D0_values[idx]
+                            Z0 = Z0_values[idx]
+                            phi0 = phi_values[idx]
 
-                        sin_phi, cos_phi = sincos(phi0)
+                            sin_phi, cos_phi = sincos(phi0)
 
-                        x1 = muladd(-D0, sin_phi, -Vx)
-                        x2 = muladd(D0, cos_phi, -Vy)
-                        x3 = Z0 - Vz
+                            x1 = muladd(-D0, sin_phi, -Vx)
+                            x2 = muladd(D0, cos_phi, -Vy)
+                            x3 = Z0 - Vz
 
-                        px = mom_x[i]
-                        py = mom_y[i]
-                        pz = mom_z[i]
+                            px = mom_x[i]
+                            py = mom_y[i]
+                            pz = mom_z[i]
 
-                        a = -charges[i] * cSpeed_Bz
+                            a = -charges[i] * cSpeed_Bz
 
-                        pt = hypot(px, py)
+                            pt = hypot(px, py)
 
-                        u = muladd(a, x2, px)
-                        v = muladd(-a, x1, py)
-                        t = hypot(u, v)
+                            u = muladd(a, x2, px)
+                            v = muladd(-a, x1, py)
+                            t = hypot(u, v)
 
-                        c = a / (2 * pt)
-                        r2 = x1^2 + x2^2
-                        cross = x1 * py - x2 * px
+                            c = a / (2 * pt)
+                            r2 = x1^2 + x2^2
+                            cross = x1 * py - x2 * px
 
-                        d = if pt < 10.0f0
-                            (t - pt) / a
+                            d = if pt < 10.0f0
+                                (t - pt) / a
+                            else
+                                (-2 * cross + a * r2) / (t + pt)
+                            end
+
+                            denom = 1 + 2 * c * d
+                            b_arg = max(r2 - d^2, 0.0f0) / (abs(denom) + 1.0f-10)
+                            b = clamp(copysign(c * sqrt(b_arg), denom), -1.0f0, 1.0f0)
+
+                            st = asin(b) / c
+                            ct = pz / pt
+
+                            dot = x1 * px + x2 * py
+                            x3 + copysign(ct * st, -dot)
                         else
-                            (-2 * cross + a * r2) / (t + pt)
+                            UNDEF_VAL
                         end
-
-                        denom = 1 + 2 * c * d
-                        b_arg = max(r2 - d^2, 0.0f0) / (abs(denom) + 1.0f-10)
-                        b = clamp(copysign(c * sqrt(b_arg), denom), -1.0f0, 1.0f0)
-
-                        st = asin(b) / c
-                        ct = pz / pt
-
-                        dot = x1 * px + x2 * py
-                        x3 + copysign(ct * st, -dot)
-                    else
-                        UNDEF_VAL
                     end
-                end) for i in eachindex(mom_x)
+                ) for i in eachindex(mom_x)
             ]
         end for jet_constituents in jets_constituents
     ]
