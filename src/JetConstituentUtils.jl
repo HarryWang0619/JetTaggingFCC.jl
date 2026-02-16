@@ -1568,8 +1568,8 @@ function get_thetarel_cluster(
             p_rot_y = mom_x[j] * sin_phi + mom_y[j] * cos_phi
 
             # Second rotation
-            p_rot2_x = p_rot_x * cos_theta - mom_z[j] * sin_theta
-            p_rot2_z = p_rot_x * sin_theta + mom_z[j] * cos_theta
+            p_rot2_x = p_rot_x * cos_theta + mom_z[j] * sin_theta
+            p_rot2_z = -p_rot_x * sin_theta + mom_z[j] * cos_theta
 
             pt_rot_sq = p_rot2_x^2 + p_rot_y^2
             pt_rot = sqrt(pt_rot_sq)
@@ -1628,7 +1628,7 @@ function get_phirel_cluster(
             p_rot_y = mom_x[j] * sin_phi + mom_y[j] * cos_phi
 
             # Second rotation around y-axis by -theta_jet
-            p_rot2_x = p_rot_x * cos_theta - mom_z[j] * sin_theta
+            p_rot2_x = p_rot_x * cos_theta + mom_z[j] * sin_theta
 
             # Calculate phi in rotated frame
             jet_constituents_collection[j] = atan(p_rot_y, p_rot2_x)
@@ -1689,8 +1689,8 @@ function get_thetarel_phirel_cluster(
             p_rot_y = mom_x[j] * sin_phi + mom_y[j] * cos_phi
 
             # Second rotation around y-axis by -theta_jet
-            p_rot2_x = p_rot_x * cos_theta - mom_z[j] * sin_theta
-            p_rot2_z = p_rot_x * sin_theta + mom_z[j] * cos_theta
+            p_rot2_x = p_rot_x * cos_theta + mom_z[j] * sin_theta
+            p_rot2_z = -p_rot_x * sin_theta + mom_z[j] * cos_theta
             p_rot2_y = p_rot_y
 
             # Calculate both theta and phi in rotated frame
@@ -1747,9 +1747,14 @@ function get_dndx(
         tmp = Vector{Float32}(undef, n_constituents)
 
         @simd ivdep for j = 1:n_constituents
-            has_valid_track = tracks_first[j].first + 1 <= tracks_len
+            jl_idx = tracks_first[j].first + 1
+            has_valid_track = jl_idx <= tracks_len
             is_charged_had = isChargedHad[j] == 1.0f0
-            tmp[j] = ifelse(has_valid_track & is_charged_had, -1.0f0, 0.0f0)
+            tmp[j] = ifelse(
+                has_valid_track & is_charged_had,
+                Float32(dNdx[jl_idx].value / 1000.0),
+                0.0f0,
+            )
         end
 
         result[i] = tmp
