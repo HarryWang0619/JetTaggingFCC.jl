@@ -24,6 +24,7 @@ include("JetFlavourHelper.jl")
 # Export all public functions
 export build_constituents_cluster
 export extract_features
+export get_event_primary_vertex
 export setup_onnx_runtime
 export prepare_input_tensor
 export get_weights
